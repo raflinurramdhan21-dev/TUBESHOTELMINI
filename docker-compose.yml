@@ -1,46 +1,50 @@
 # buat db room service
-room-db:
-  image: postgres:17
-  container_name: room-db
+services:
+  room-db:
+    image: postgres:17
+    container_name: room-db
 
-  environment:
-    POSTGRES_DB: room_db
-    POSTGRES_USER: room_user
-    POSTGRES_PASSWORD: room_password
+    environment:
+      POSTGRES_DB: room_db
+      POSTGRES_USER: room_user
+      POSTGRES_PASSWORD: room_password
 
-  ports:
-    - "5434:5432"
+    ports:
+      - "5434:5432"
 
-  volumes:
-    - room_postgres_data:/var/lib/postgresql/data
+    volumes:
+      - room_postgres_data:/var/lib/postgresql/data
 
-  networks:
-    - microservice-network
+    networks:
+      - microservice-network
 
-# buat room service
-room-service:
-  build: ./room-service
+  # buat room service
+  room-service:
+    build: ./room-service
 
-  container_name: room-service
+    container_name: room-service
 
-  ports:
-    - "5001:5000"
+    ports:
+      - "5001:5000"
 
-  environment:
-    DB_HOST: room-db
-    DB_NAME: room_db
-    DB_USER: room_user
-    DB_PASSWORD: room_password
-    DB_PORT: 5432
+    environment:
+      DB_HOST: room-db
+      DB_NAME: room_db
+      DB_USER: room_user
+      DB_PASSWORD: room_password
+      DB_PORT: 5432
 
-  depends_on:
-    - room-db
+    depends_on:
+      - room-db
 
-  networks:
-    - microservice-network
+    networks:
+      - microservice-network
 
-# ni jan dihapus dlu, buat api gateway
+# ni jan dihapus dlu
 networks:
   microservice-network:
     driver: bridge
+
+volumes:
+  room_postgres_data:
 
