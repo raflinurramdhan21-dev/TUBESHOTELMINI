@@ -18,6 +18,25 @@ services:
     networks:
       - microservice-network
 
+  guest-db:
+    image: mysql:8.4
+    container_name: guest-db
+
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: guest_db
+      MYSQL_USER: guest_user
+      MYSQL_PASSWORD: guest_password
+
+    ports:
+      - "3308:3306"
+
+    volumes:
+      - guest_mysql_data:/var/lib/mysql
+
+    networks:
+      - microservice-network
+
   # buat room service
   room-service:
     build: ./room-service
@@ -40,6 +59,28 @@ services:
     networks:
       - microservice-network
 
+  guest-service:
+    build: ./guest-service
+
+    container_name: guest-service
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: guest-db
+      DB_PORT: 3306
+      DB_DATABASE: guest_db
+      DB_USERNAME: guest_user
+      DB_PASSWORD: guest_password
+
+    depends_on:
+      - guest-db
+
+    networks:
+      - microservice-network
+
 # ni jan dihapus dlu
 networks:
   microservice-network:
@@ -47,4 +88,5 @@ networks:
 
 volumes:
   room_postgres_data:
+  guest_mysql_data:
 
