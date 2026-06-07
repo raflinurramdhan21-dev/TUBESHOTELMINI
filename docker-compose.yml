@@ -1,46 +1,90 @@
-# buat db room service
-room-db:
-  image: postgres:17
-  container_name: room-db
+services:
 
-  environment:
-    POSTGRES_DB: room_db
-    POSTGRES_USER: room_user
-    POSTGRES_PASSWORD: room_password
+  # buat db room service
+  room-db:
+    image: postgres:17
+    container_name: room-db
 
-  ports:
-    - "5434:5432"
+    environment:
+      POSTGRES_DB: room_db
+      POSTGRES_USER: room_user
+      POSTGRES_PASSWORD: room_password
 
-  volumes:
-    - room_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
 
-  networks:
-    - microservice-network
+    volumes:
+      - room_postgres_data:/var/lib/postgresql/data
 
-# buat room service
-room-service:
-  build: ./room-service
+    networks:
+      - microservice-network
 
-  container_name: room-service
+  # buat room service
+  room-service:
+    build: ./room-service
+    container_name: room-service
 
-  ports:
-    - "5001:5000"
+    ports:
+      - "5001:5000"
 
-  environment:
-    DB_HOST: room-db
-    DB_NAME: room_db
-    DB_USER: room_user
-    DB_PASSWORD: room_password
-    DB_PORT: 5432
+    environment:
+      DB_HOST: room-db
+      DB_NAME: room_db
+      DB_USER: room_user
+      DB_PASSWORD: room_password
+      DB_PORT: 5432
 
-  depends_on:
-    - room-db
+    depends_on:
+      - room-db
 
-  networks:
-    - microservice-network
+    networks:
+      - microservice-network
+
+  # buat db payment service
+  payment-db:
+    image: postgres:17
+    container_name: payment-db
+
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: payment_user
+      POSTGRES_PASSWORD: payment_password
+
+    ports:
+      - "5435:5432"
+
+    volumes:
+      - payment_postgres_data:/var/lib/postgresql/data
+
+    networks:
+      - microservice-network
+
+  # buat payment service
+  payment-service:
+    build: ./payment-service
+    container_name: payment-service
+
+    ports:
+      - "5002:3000"
+
+    environment:
+      DB_HOST: payment-db
+      DB_NAME: payment_db
+      DB_USER: payment_user
+      DB_PASSWORD: payment_password
+      DB_PORT: 5432
+
+    depends_on:
+      - payment-db
+
+    networks:
+      - microservice-network
 
 # ni jan dihapus dlu, buat api gateway
 networks:
   microservice-network:
     driver: bridge
 
+volumes:
+  room_postgres_data:
+  payment_postgres_data:
