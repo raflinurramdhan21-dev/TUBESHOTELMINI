@@ -79,8 +79,118 @@ services:
 
     networks:
       - microservice-network
+# buat db room service
+services:
+  room-db:
+    image: postgres:17
+    container_name: room-db
 
-# ni jan dihapus dlu, buat api gateway
+    environment:
+      POSTGRES_DB: room_db
+      POSTGRES_USER: room_user
+      POSTGRES_PASSWORD: room_password
+
+    ports:
+      - "5434:5432"
+
+    volumes:
+      - room_postgres_data:/var/lib/postgresql/data
+
+    networks:
+      - microservice-network
+
+  guest-db:
+    image: mysql:8.4
+    container_name: guest-db
+
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: guest_db
+      MYSQL_USER: guest_user
+      MYSQL_PASSWORD: guest_password
+
+    ports:
+      - "3308:3306"
+
+    volumes:
+      - guest_mysql_data:/var/lib/mysql
+
+    networks:
+      - microservice-network
+
+  # buat room service
+  room-service:
+    build: ./room-service
+
+    container_name: room-service
+
+    ports:
+      - "5001:5000"
+
+    environment:
+      DB_HOST: room-db
+      DB_NAME: room_db
+      DB_USER: room_user
+      DB_PASSWORD: room_password
+      DB_PORT: 5432
+
+    depends_on:
+      - room-db
+
+    networks:
+      - microservice-network
+
+  guest-service:
+    build: ./guest-service
+
+    container_name: guest-service
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: guest-db
+      DB_PORT: 3306
+      DB_DATABASE: guest_db
+      DB_USERNAME: guest_user
+      DB_PASSWORD: guest_password
+
+    depends_on:
+      - guest-db
+
+    networks:
+      - microservice-network
+
+  booking-db:
+    image: mongo:7
+    container_name: booking-db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: booking
+      MONGO_INITDB_ROOT_PASSWORD: bookingpassword
+    ports:
+      - "27017:27017"
+    volumes:
+      - booking_mongo_data:/data/db
+    networks:
+      - microservice-network
+
+  booking-service:
+    build: ./booking-service
+    container_name: booking-service
+    ports:
+      - "3000:3000"
+    environment:
+      MONGO_URL: mongodb://booking:bookingpassword@booking-db:27017/booking_db?authSource=admin
+      ROOM_SERVICE_URL: http://room-service:5000
+      # PAYMENT_SERVICE_URL: http://payment-service:4000
+    depends_on:
+      - booking-db
+      - room-service
+    networks:
+      - microservice-network
+
+# ni jan dihapus dlu
 networks:
   microservice-network:
     driver: bridge
@@ -88,3 +198,5 @@ networks:
 volumes:
   room_postgres_data:
   payment_postgres_data:
+  guest_mysql_data:
+  booking_mongo_data:
