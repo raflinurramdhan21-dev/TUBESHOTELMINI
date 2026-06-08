@@ -1,8 +1,3 @@
-# ============================================================
-# HOTEL MINI - MICROSERVICE DOCKER COMPOSE
-# Flow: guest-service & room-service → booking-service → payment-service
-# ============================================================
-
 networks:
   microservice-network:
     driver: bridge
@@ -15,7 +10,7 @@ volumes:
 
 services:
 
-  # ── DATABASE: GUEST (MySQL) ────────────────────────────
+  # buat db guest
   guest-db:
     image: mysql:8.4
     container_name: guest-db
@@ -36,7 +31,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # ── SERVICE: GUEST (Laravel/PHP) ──────────────────────
+  # buat service guest
   guest-service:
     build: ./guest-service
     container_name: guest-service
@@ -55,7 +50,7 @@ services:
     networks:
       - microservice-network
 
-  # ── DATABASE: ROOM (PostgreSQL) ───────────────────────
+  # buat db room
   room-db:
     image: postgres:17
     container_name: room-db
@@ -75,7 +70,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # ── SERVICE: ROOM (Python/Flask) ──────────────────────
+  # buat service room
   room-service:
     build: ./room-service
     container_name: room-service
@@ -93,7 +88,7 @@ services:
     networks:
       - microservice-network
 
-  # ── DATABASE: BOOKING (MongoDB) ───────────────────────
+  # buat db booking
   booking-db:
     image: mongo:7
     container_name: booking-db
@@ -112,7 +107,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # ── SERVICE: BOOKING (Node.js/Express) ────────────────
+  # buat service booking
   booking-service:
     build: ./booking-service
     container_name: booking-service
@@ -133,7 +128,7 @@ services:
     networks:
       - microservice-network
 
-  # ── DATABASE: PAYMENT (PostgreSQL) ───────────────────
+  # buat db payment
   payment-db:
     image: postgres:17
     container_name: payment-db
@@ -153,7 +148,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # ── SERVICE: PAYMENT (Node.js/Express) ───────────────
+  # buat payment service
   payment-service:
     build: ./payment-service
     container_name: payment-service
@@ -172,7 +167,7 @@ services:
     networks:
       - microservice-network
 
-  # ── API GATEWAY (Node.js/Express) ─────────────────────
+  # buat api gateway
   api-gateway:
     build: ./api-gateway
     container_name: api-gateway
