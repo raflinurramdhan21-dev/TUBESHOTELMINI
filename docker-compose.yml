@@ -1,153 +1,47 @@
+# ============================================================
+# HOTEL MINI - MICROSERVICE DOCKER COMPOSE
+# Flow: guest-service & room-service → booking-service → payment-service
+# ============================================================
+
+networks:
+  microservice-network:
+    driver: bridge
+
+volumes:
+  room_postgres_data:
+  payment_postgres_data:
+  guest_mysql_data:
+  booking_mongo_data:
+
 services:
 
-  # buat db room service
-  room-db:
-    image: postgres:17
-    container_name: room-db
-
-    environment:
-      POSTGRES_DB: room_db
-      POSTGRES_USER: room_user
-      POSTGRES_PASSWORD: room_password
-
-    ports:
-      - "5434:5432"
-
-    volumes:
-      - room_postgres_data:/var/lib/postgresql/data
-
-    networks:
-      - microservice-network
-
-  # buat room service
-  room-service:
-    build: ./room-service
-    container_name: room-service
-
-    ports:
-      - "5001:5000"
-
-    environment:
-      DB_HOST: room-db
-      DB_NAME: room_db
-      DB_USER: room_user
-      DB_PASSWORD: room_password
-      DB_PORT: 5432
-
-    depends_on:
-      - room-db
-
-    networks:
-      - microservice-network
-
-  # buat db payment service
-  payment-db:
-    image: postgres:17
-    container_name: payment-db
-
-    environment:
-      POSTGRES_DB: payment_db
-      POSTGRES_USER: payment_user
-      POSTGRES_PASSWORD: payment_password
-
-    ports:
-      - "5435:5432"
-
-    volumes:
-      - payment_postgres_data:/var/lib/postgresql/data
-
-    networks:
-      - microservice-network
-
-  # buat payment service
-  payment-service:
-    build: ./payment-service
-    container_name: payment-service
-
-    ports:
-      - "5002:3000"
-
-    environment:
-      DB_HOST: payment-db
-      DB_NAME: payment_db
-      DB_USER: payment_user
-      DB_PASSWORD: payment_password
-      DB_PORT: 5432
-
-    depends_on:
-      - payment-db
-
-    networks:
-      - microservice-network
-# buat db room service
-services:
-  room-db:
-    image: postgres:17
-    container_name: room-db
-
-    environment:
-      POSTGRES_DB: room_db
-      POSTGRES_USER: room_user
-      POSTGRES_PASSWORD: room_password
-
-    ports:
-      - "5434:5432"
-
-    volumes:
-      - room_postgres_data:/var/lib/postgresql/data
-
-    networks:
-      - microservice-network
-
+  # ── DATABASE: GUEST (MySQL) ────────────────────────────
   guest-db:
     image: mysql:8.4
     container_name: guest-db
-
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: guest_db
       MYSQL_USER: guest_user
       MYSQL_PASSWORD: guest_password
-
     ports:
       - "3308:3306"
-
     volumes:
       - guest_mysql_data:/var/lib/mysql
-
     networks:
       - microservice-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "guest_user", "-pguest_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
-  # buat room service
-  room-service:
-    build: ./room-service
-
-    container_name: room-service
-
-    ports:
-      - "5001:5000"
-
-    environment:
-      DB_HOST: room-db
-      DB_NAME: room_db
-      DB_USER: room_user
-      DB_PASSWORD: room_password
-      DB_PORT: 5432
-
-    depends_on:
-      - room-db
-
-    networks:
-      - microservice-network
-
+  # ── SERVICE: GUEST (Laravel/PHP) ──────────────────────
   guest-service:
     build: ./guest-service
-
     container_name: guest-service
-
     ports:
       - "8000:8000"
-
     environment:
       DB_CONNECTION: mysql
       DB_HOST: guest-db
@@ -155,13 +49,51 @@ services:
       DB_DATABASE: guest_db
       DB_USERNAME: guest_user
       DB_PASSWORD: guest_password
-
     depends_on:
-      - guest-db
-
+      guest-db:
+        condition: service_healthy
     networks:
       - microservice-network
 
+  # ── DATABASE: ROOM (PostgreSQL) ───────────────────────
+  room-db:
+    image: postgres:17
+    container_name: room-db
+    environment:
+      POSTGRES_DB: room_db
+      POSTGRES_USER: room_user
+      POSTGRES_PASSWORD: room_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - room_postgres_data:/var/lib/postgresql/data
+    networks:
+      - microservice-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U room_user -d room_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── SERVICE: ROOM (Python/Flask) ──────────────────────
+  room-service:
+    build: ./room-service
+    container_name: room-service
+    ports:
+      - "5001:5000"
+    environment:
+      DB_HOST: room-db
+      DB_NAME: room_db
+      DB_USER: room_user
+      DB_PASSWORD: room_password
+      DB_PORT: 5432
+    depends_on:
+      room-db:
+        condition: service_healthy
+    networks:
+      - microservice-network
+
+  # ── DATABASE: BOOKING (MongoDB) ───────────────────────
   booking-db:
     image: mongo:7
     container_name: booking-db
@@ -174,7 +106,13 @@ services:
       - booking_mongo_data:/data/db
     networks:
       - microservice-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
+  # ── SERVICE: BOOKING (Node.js/Express) ────────────────
   booking-service:
     build: ./booking-service
     container_name: booking-service
@@ -183,20 +121,73 @@ services:
     environment:
       MONGO_URL: mongodb://booking:bookingpassword@booking-db:27017/booking_db?authSource=admin
       ROOM_SERVICE_URL: http://room-service:5000
-      # PAYMENT_SERVICE_URL: http://payment-service:4000
+      GUEST_SERVICE_URL: http://guest-service:8000
+      PAYMENT_SERVICE_URL: http://payment-service:4000
     depends_on:
-      - booking-db
-      - room-service
+      booking-db:
+        condition: service_healthy
+      room-service:
+        condition: service_started
+      guest-service:
+        condition: service_started
     networks:
       - microservice-network
 
-# ni jan dihapus dlu
-networks:
-  microservice-network:
-    driver: bridge
+  # ── DATABASE: PAYMENT (PostgreSQL) ───────────────────
+  payment-db:
+    image: postgres:17
+    container_name: payment-db
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: payment_user
+      POSTGRES_PASSWORD: payment_password
+    ports:
+      - "5435:5432"
+    volumes:
+      - payment_postgres_data:/var/lib/postgresql/data
+    networks:
+      - microservice-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment_user -d payment_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
-volumes:
-  room_postgres_data:
-  payment_postgres_data:
-  guest_mysql_data:
-  booking_mongo_data:
+  # ── SERVICE: PAYMENT (Node.js/Express) ───────────────
+  payment-service:
+    build: ./payment-service
+    container_name: payment-service
+    ports:
+      - "5002:4000"
+    environment:
+      DB_HOST: payment-db
+      DB_NAME: payment_db
+      DB_USER: payment_user
+      DB_PASSWORD: payment_password
+      DB_PORT: 5432
+      PORT: 4000
+    depends_on:
+      payment-db:
+        condition: service_healthy
+    networks:
+      - microservice-network
+
+  # ── API GATEWAY (Node.js/Express) ─────────────────────
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      GUEST_SERVICE_URL: http://guest-service:8000
+      ROOM_SERVICE_URL: http://room-service:5000
+      BOOKING_SERVICE_URL: http://booking-service:3000
+      PAYMENT_SERVICE_URL: http://payment-service:4000
+    depends_on:
+      - guest-service
+      - room-service
+      - booking-service
+      - payment-service
+    networks:
+      - microservice-network

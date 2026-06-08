@@ -10,7 +10,7 @@ const DB_NAME = process.env.DB_NAME || 'payment_db';
 const DB_USER = process.env.DB_USER || 'payment_user';
 const DB_PASSWORD = process.env.DB_PASSWORD || 'payment_password';
 const DB_PORT = process.env.DB_PORT || 5432;
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 const pool = new Pool({
   host: DB_HOST,
@@ -155,10 +155,12 @@ app.get('/payments/order/:orderId', async (req, res) => {
 // ── CREATE PAYMENT ─────────────────────────────────────
 app.post('/payments', async (req, res) => {
   try {
-    const { order_id, room_id, amount, currency = 'IDR', method, description } = req.body;
+    // Support 'booking_id' dari booking-service sebagai 'order_id'
+    const { booking_id, order_id: raw_order_id, room_id, amount, currency = 'IDR', method = 'bank_transfer', description } = req.body;
+    const order_id = raw_order_id || booking_id;
 
-    if (!order_id || room_id === undefined || amount === undefined || !method)
-      return res.status(400).json({ message: 'order_id, room_id, amount, dan method wajib diisi' });
+    if (!order_id || room_id === undefined || amount === undefined)
+      return res.status(400).json({ message: 'order_id (atau booking_id), room_id, dan amount wajib diisi' });
 
     if (amount <= 0)
       return res.status(400).json({ message: 'Amount harus lebih dari 0' });
