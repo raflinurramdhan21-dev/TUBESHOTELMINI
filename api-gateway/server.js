@@ -32,64 +32,54 @@ app.get("/health", (req, res) => {
 });
 
 // ── HEALTH CHECK SEMUA SERVICE ────────────────────────
-app.get('/health/all', async (req, res) => {
-    const services = [
-        {
-            name: 'guest-service',
-            url: `${GUEST_SERVICE_URL}/health`,
-        },
-        {
-            name: 'room-service',
-            url: `${ROOM_SERVICE_URL}/health`,
-        },
-        {
-            name: 'booking-service',
-            url: `${BOOKING_SERVICE_URL}/health`,
-        },
-        {
-            name: 'payment-service',
-            url: `${PAYMENT_SERVICE_URL}/health`,
-        },
-    ];
+app.get("/health/all", async (req, res) => {
+  const services = [
+    { name: "guest-service",   url: `${GUEST_SERVICE_URL}/api/health` },
+    { name: "room-service",    url: `${ROOM_SERVICE_URL}/health` },
+    { name: "booking-service", url: `${BOOKING_SERVICE_URL}/health` },
+    { name: "payment-service", url: `${PAYMENT_SERVICE_URL}/health` },
+  ];
 
-    const results = await Promise.all(
-        services.map(async (service) => {
-            try {
+  const results = await Promise.allSettled(
+    services.map(async (svc) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      try {
+        const response = await fetch(svc.url, { signal: controller.signal });
+        
+        // Cek apakah response dari service sukses (HTTP 200)
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return { name: svc.name, status: "up", data };
+      } catch (err) {
+        // Jika gagal konek atau service error, lempar ke reject agar masuk ke 'reason'
+        throw new Error(err.message);
+      } finally {
+        clearTimeout(timeout);
+      }
+    })
+  );
 
-               const result = await fetchJson(service.url);
+  // Memetakan hasil dengan benar berdasarkan status promise
+  const statuses = services.map((svc, index) => {
+    const result = results[index];
+    if (result.status === "fulfilled") {
+      return result.value;
+    } else {
+      return { name: svc.name, status: "down", error: result.reason.message };
+    }
+  });
 
-               if (!result.ok) {
-                   return {
-                       name: service.name,
-                       status: 'down',
-                       error: result.error || result.data,
-                   };
-               }
+  const allUp = statuses.every((s) => s.status === "up");
 
-               return {
-                   name: service.name,
-                   status: 'up',
-                   data: result.data,
-               };
-            } catch (error) {
-                return {
-                    name: service.name,
-                    status: 'down',
-                    error: error.message,
-                };
-            }
-        })
-    );
-
-    const overall = results.every((service) => service.status === 'up')
-        ? 'healthy'
-        : 'degraded';
-
-    res.json({
-        gateway: 'api-gateway',
-        overall,
-        services: results,
-    });
+  res.status(allUp ? 200 : 207).json({
+    gateway: "api-gateway",
+    overall: allUp ? "all_up" : "degraded",
+    services: statuses,
+  });
 });
 
 // ── PROXY OPTIONS FACTORY ─────────────────────────────
