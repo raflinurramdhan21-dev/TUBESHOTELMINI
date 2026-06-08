@@ -106,6 +106,12 @@ app.get('/health', (req, res) => {
   });
 });
 
+async function getBooking(bookingId) {
+  const res = await fetch(`http://booking-service:3000/bookings/${bookingId}`);
+  if (!res.ok) throw new Error("Booking tidak ditemukan");
+  return await res.json();
+}
+
 // ── GET ALL PAYMENTS ───────────────────────────────────
 app.get('/payments', async (req, res) => {
   try {
@@ -168,6 +174,19 @@ app.post('/payments', async (req, res) => {
     if (!ALLOWED_METHODS.includes(method))
       return res.status(400).json({ message: 'Method tidak valid', allowed_methods: ALLOWED_METHODS });
 
+    let roomIdFinal= room_id;
+    let amountFinal = amount;
+
+    try {
+      const booking = await getBooking(order_id)
+
+      roomIdFinal = booking.data.room_id;
+      amountFinal = booking.data.total_price;
+
+    } catch (err){
+      console.log("Booking tidak ditemukan, pakai data request body");
+    }
+
     // Cegah duplikat pending
     const dup = await pool.query(
       "SELECT id FROM payments WHERE order_id = $1 AND status = 'pending'", [order_id]
@@ -180,7 +199,7 @@ app.post('/payments', async (req, res) => {
       INSERT INTO payments (id, order_id, room_id, amount, currency, method, status, description)
       VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)
       RETURNING *
-    `, [id, order_id, room_id, amount, currency, method, description]);
+    `, [ id, order_id, roomIdFinal, amountFinal, currency, method, description ]);
 
     res.status(201).json({
       service:  'payment-service',

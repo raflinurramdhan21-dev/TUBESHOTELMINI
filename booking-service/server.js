@@ -7,13 +7,16 @@ app.use(express.json());
 const PORT = 3000;
 
 const ROOM_SERVICE_URL = 
-  process.env.ROOM_SERVICE_URL || "http://room-service:5000";
+  process.env.ROOM_SERVICE_URL || "http://room-service:5001";
 
 const PAYMENT_SERVICE_URL =
-  process.env.PAYMENT_SERVICE_URL || "http://payment-service:4000";
+  process.env.PAYMENT_SERVICE_URL || "http://payment-service:5002";
 
 const GUEST_SERVICE_URL = 
   process.env.GUEST_SERVICE_URL || "http://guest-service:8000"
+
+const BOOKING_SERVICE_URL = 
+  process.env.BOOKING_SERVICE_URL || "http://booking:3000"
 
 const MONGO_URL =
   process.env.MONGO_URL || "mongodb://booking:bookingpassword@booking-db:27017/booking_db?authSource=admin";
@@ -190,6 +193,81 @@ app.post("/bookings", async (req, res) => {
       service: "booking-service",
       message: "Gagal membuat booking",
       error: error.message
+    });
+  }
+});
+
+app.patch("/bookings/:id/status", async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({
+        message: "Booking tidak ditemukan"
+      });
+    }
+
+    booking.status = status;
+    await booking.save();
+
+    if (status === "cancelled") {
+      await fetch(`${ROOM_SERVICE_URL}/rooms/${booking.room_id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "available",
+        }),
+      });
+    }
+
+    res.json({
+      service: "booking-service",
+      message: "Status booking berhasil diupdate",
+      data: booking,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Gagal update booking",
+      error: err.message,
+    });
+  }
+});
+
+app.delete("/bookings/:id", async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({
+        service:  "booking-service",
+        message: "booking tidak ditemukan",
+      });
+    }
+
+    await fetch(`${ROOM_SERVICE_URL}/rooms/${booking.room_id}/status`, {
+      method: "PATCH",
+      headers:  {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        status: "available"
+      }),
+    });
+
+    await Booking.findByIdAndDelete(req.params.id);
+
+    res.json({
+      service: "booking-service",
+      message: "Booking berhasil dihapus",
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      service: "booking-service",
+      message: "Gagal menghapus booking",
+      error: err.message,
     });
   }
 });
