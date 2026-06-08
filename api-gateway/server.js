@@ -34,7 +34,7 @@ app.get("/health", (req, res) => {
 // ── HEALTH CHECK SEMUA SERVICE ────────────────────────
 app.get("/health/all", async (req, res) => {
   const services = [
-    { name: "guest-service",   url: `${GUEST_SERVICE_URL}/health` },
+    { name: "guest-service",   url: `${GUEST_SERVICE_URL}/api/health` },
     { name: "room-service",    url: `${ROOM_SERVICE_URL}/health` },
     { name: "booking-service", url: `${BOOKING_SERVICE_URL}/health` },
     { name: "payment-service", url: `${PAYMENT_SERVICE_URL}/health` },
