@@ -17,7 +17,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY . .
 
-RUN composer install --no-interaction --verbose
+RUN composer install --no-interaction --ignore-platform-reqs
 
 EXPOSE 8000
 
