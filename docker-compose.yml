@@ -1,13 +1,3 @@
-networks:
-  microservice-network:
-    driver: bridge
-
-volumes:
-  room_postgres_data:
-  payment_postgres_data:
-  guest_mysql_data:
-  booking_mongo_data:
-
 services:
 
   # buat db guest
@@ -186,3 +176,13 @@ services:
       - payment-service
     networks:
       - microservice-network
+
+networks:
+  microservice-network:
+    driver: bridge
+
+volumes:
+  room_postgres_data:
+  payment_postgres_data:
+  guest_mysql_data:
+  booking_mongo_data:
