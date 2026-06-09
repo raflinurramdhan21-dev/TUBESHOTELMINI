@@ -115,6 +115,8 @@ services:
         condition: service_started
       guest-service:
         condition: service_started
+      payment-service:
+        condition: service_started  
     networks:
       - microservice-network
 
