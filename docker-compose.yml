@@ -177,6 +177,25 @@ services:
     networks:
       - microservice-network
 
+  # buat graphql gateway
+  graphql-gateway:
+    build: ./graphql-gateway
+    container_name: graphql-gateway
+    ports:
+      - "4000:4000"
+    environment:
+      GUEST_SERVICE_URL:   http://guest-service:8000
+      ROOM_SERVICE_URL:    http://room-service:5000
+      BOOKING_SERVICE_URL: http://booking-service:3000
+      PAYMENT_SERVICE_URL: http://payment-service:4000
+    depends_on:
+      - guest-service
+      - room-service
+      - booking-service
+      - payment-service
+    networks:
+      - microservice-network
+
 networks:
   microservice-network:
     driver: bridge
